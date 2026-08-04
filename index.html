@@ -215,12 +215,15 @@ var COPY_ICON = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xml
   '<path d="M3.5 10.5V3.5A1 1 0 0 1 4.5 2.5H11" style="stroke:var(--ink);stroke-width:1.3;fill:none;"/>' +
 '</svg>';
 
-function openClientLink(id){
+function openClientLink(id, justOpenedWhatsApp){
   var url = baseUrl() + '?client=' + id;
+  var intro = justOpenedWhatsApp
+    ? 'We opened WhatsApp with the link ready to send. If it didn\'t open, copy the link below instead.'
+    : 'Open this on the client\'s phone, or tap below to preview it yourself.';
   go(
     '<span class="back" onclick="renderMechanicList()">&#8249; Clients</span>' +
     '<h1 class="title">Client link</h1>' +
-    '<p class="sub">Open this on the client\'s phone, or tap below to preview it yourself.</p>' +
+    '<p class="sub">' + intro + '</p>' +
     '<div class="link-box"><span class="link-text" id="linkBox">' + esc(url) + '</span><button class="link-copy-btn" onclick="copyLink()" aria-label="Copy link">' + COPY_ICON + '</button></div>' +
     '<p class="toast" id="copyToast"></p>' +
     stickyFooter('<a href="?client=' + id + '" style="text-decoration:none;display:block;"><button class="btn btn-primary" style="width:100%;">Open as this client</button></a>')
@@ -242,16 +245,36 @@ function renderAddClient(){
     '<hr class="rule">' +
     '<div class="field"><label>Name</label><input id="ac-name" type="text" placeholder="Full name"></div>' +
     '<div class="field"><label>Phone</label><input id="ac-phone" type="text" placeholder="050-000-0000"></div>' +
+    '<div class="field"><label>Email (optional)</label><input id="ac-email" type="text" placeholder="name@example.com"></div>' +
     stickyFooter('<button class="btn btn-primary" onclick="submitAddClient()">Send link</button>')
   );
 }
+
+/* Builds a wa.me link from a local Israeli number (e.g. 050-123-4567 -> 972501234567).
+   If the number already looks international (starts with a country code, no leading 0),
+   it's left as-is. */
+function waLinkFor(phone, message){
+  var digits = phone.replace(/[^0-9]/g, '');
+  if (digits.charAt(0) === '0') digits = '972' + digits.slice(1);
+  return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(message);
+}
+
 function submitAddClient(){
   var name = document.getElementById('ac-name').value.trim();
   var phone = document.getElementById('ac-phone').value.trim();
+  var email = document.getElementById('ac-email').value.trim();
   if (!name) { alert('Name is required'); return; }
-  var client = { id: uid(), name: name, phone: phone, status: 'sent', createdAt: Date.now(), vehicle: null };
+  var client = { id: uid(), name: name, phone: phone, email: email, status: 'sent', createdAt: Date.now(), vehicle: null };
   upsertClient(client);
-  openClientLink(client.id);
+
+  var url = baseUrl() + '?client=' + client.id;
+  var openedWhatsApp = false;
+  if (phone) {
+    var message = 'Hi ' + name + '! ' + SHOP_NAME + ' added you as a client \u2014 tap this link to register your car: ' + url;
+    window.open(waLinkFor(phone, message), '_blank');
+    openedWhatsApp = true;
+  }
+  openClientLink(client.id, openedWhatsApp);
 }
 
 /* =========================================================
