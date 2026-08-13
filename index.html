@@ -4,6 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SabbaShop</title>
+<meta name="description" content="Clients, cars, services and reminders — all in one place.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gvilidiego.github.io/Garageboard/">
+<meta property="og:title" content="SabbaShop — garage management">
+<meta property="og:description" content="Clients, cars, services and reminders — all in one place.">
+<meta property="og:image" content="https://gvilidiego.github.io/Garageboard/og-image.png">
+<meta property="og:image:width" content="1000">
+<meta property="og:image:height" content="1000">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://gvilidiego.github.io/Garageboard/og-image.png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -258,6 +268,7 @@
   .tabbar{position:fixed; bottom:0; left:0; right:0; background:var(--paper); border-top:1px solid var(--ink); display:flex; justify-content:center; z-index:60;}
   .tabbar-btn{flex:1; max-width:110px; background:none; border:none; padding:15px 4px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--steel); cursor:pointer;}
   .tabbar-btn.active{color:var(--ink); font-weight:600;}
+  .tabbar[hidden]{display:none;}
   .title.big{font-size:26px; font-weight:900; margin:0 0 4px;}
   .kpi-card{display:flex; padding:18px 0; min-height:auto;}
   .kpi{flex:1; text-align:center; padding:0 6px;}
@@ -360,6 +371,7 @@
 <body>
 <button id="clientLang" onclick="toggleLang()" hidden>עברית</button>
 <div id="app"></div>
+<div id="tabbarHost" class="tabbar" hidden></div>
 
 <script>
 /* ---------- storage ---------- */
@@ -670,7 +682,7 @@ function setLang(l){
 function refresh(){ if (clientId) renderClientFlow(clientId); else renderMechanic(); }
 
 function baseUrl(){ return location.origin + location.pathname; }
-function go(html){ app.innerHTML = html; app.classList.remove('view-in'); void app.offsetWidth; app.classList.add('view-in'); }
+function go(html){ hideTabBar(); app.innerHTML = html; app.classList.remove('view-in'); void app.offsetWidth; app.classList.add('view-in'); }
 function stickyFooter(buttonsHtml){
   return '<div class="sticky-footer"><div class="sticky-footer-inner">' + buttonsHtml + '</div></div>';
 }
@@ -716,10 +728,14 @@ function renderDashboard(){ mechScreen = 'today'; renderMechScreen(); }
 function toggleHeaderMenu(){}
 function closeHeaderMenu(){}
 function syncHeader(){ var cl = document.getElementById('clientLang'); if (cl) { cl.textContent = (LANG === 'he') ? 'EN' : 'עברית'; cl.hidden = !clientId; } }
-function tabBar(active){
+/* Persistent tab bar lives OUTSIDE #app so it never re-animates when the view changes. */
+function showTabBar(active){
+  var host = document.getElementById('tabbarHost'); if (!host) return;
   function tb(key, label){ return '<button class="tabbar-btn' + (active === key ? ' active' : '') + '" onclick="goTab(\'' + key + '\')">' + label + '</button>'; }
-  return '<div class="tabbar">' + tb('today', t('Today')) + tb('clients', t('Clients')) + tb('calendar', t('Calendar')) + tb('settings', t('Settings')) + '</div>';
+  host.innerHTML = tb('today', t('Today')) + tb('clients', t('Clients')) + tb('calendar', t('Calendar')) + tb('settings', t('Settings'));
+  host.hidden = false;
 }
+function hideTabBar(){ var host = document.getElementById('tabbarHost'); if (host) host.hidden = true; }
 
 /* ---------- shop profile ---------- */
 function loadProfile(){ return PROFILE || {}; }
@@ -799,9 +815,9 @@ function renderToday(){
     '<div class="card" style="min-height:auto;">' + schedRows + '</div>' +
     (noClients
       ? emptyState({ title: 'You have no clients or cars yet', sub: 'Add a client and schedule a service', cta: { label: 'Add client', onclick: 'renderAddClient()' } })
-      : (alerts ? ('<p class="eyebrow" style="margin-top:20px;">' + t('Alerts') + '</p><div class="alerts">' + alerts + '</div>') : '')) +
-    tabBar('today')
+      : (alerts ? ('<p class="eyebrow" style="margin-top:20px;">' + t('Alerts') + '</p><div class="alerts">' + alerts + '</div>') : ''))
   );
+  showTabBar('today');
 }
 
 /* ---------- Clients / Cars tab ---------- */
@@ -811,9 +827,9 @@ function renderClientsScreen(){
     '<div class="sec-head"><h1 class="title" style="margin:0;">' + (listMode === 'cars' ? t('Cars') : t('Clients')) + '</h1>' +
       '<button class="add-mini" aria-label="' + t('Add client') + '" onclick="renderAddClient()">+</button></div>' +
     '<div class="seg" style="margin-bottom:14px;">' + seg('clients', t('Clients')) + seg('cars', t('Cars')) + '</div>' +
-    (listMode === 'cars' ? carsList() : clientsList()) +
-    tabBar('clients')
+    (listMode === 'cars' ? carsList() : clientsList())
   );
+  showTabBar('clients');
 }
 
 /* ---------- Calendar tab (day / week / month) ---------- */
@@ -833,9 +849,9 @@ function renderCalendarScreen(){
     '<h1 class="title">' + t('Calendar') + '</h1>' +
     '<div class="seg" style="margin:12px 0 16px;">' + seg('day', t('Day')) + seg('week', t('Week')) + seg('month', t('Month')) + '</div>' +
     body +
-    '<button class="btn btn-primary" style="margin-top:20px;" onclick="startAddService()">' + t('Add service') + '</button>' +
-    tabBar('calendar')
+    '<button class="btn btn-primary" style="margin-top:20px;" onclick="startAddService()">' + t('Add service') + '</button>'
   );
+  showTabBar('calendar');
 }
 function calServiceRow(r){
   var car = ((r.vehicle.make || '') + ' ' + (r.vehicle.model || '')).trim() || t('Vehicle');
@@ -969,9 +985,9 @@ function renderSettings(){
       '<button class="setting-row" onclick="renderProfile()"><span>' + t('Profile & details') + '</span><span class="setting-val">' + esc(SHOP_NAME) + ' ' + chevFwd() + '</span></button>' +
       '<button class="setting-row" onclick="renderArchived()"><span>' + t('Archived') + '</span><span class="setting-val">' + chevFwd() + '</span></button>' +
     '</div>' +
-    '<button class="btn btn-secondary" style="margin-top:16px;" onclick="doLogout()">' + t('Log out') + '</button>' +
-    tabBar('settings')
+    '<button class="btn btn-secondary" style="margin-top:16px;" onclick="doLogout()">' + t('Log out') + '</button>'
   );
+  showTabBar('settings');
 }
 
 /* =========================================================
