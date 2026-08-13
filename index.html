@@ -285,6 +285,8 @@
   .setting-row{display:flex; align-items:center; justify-content:space-between; width:100%; background:none; border:none; border-bottom:1px solid var(--hairline); padding:14px 16px; font-family:'Atlas',sans-serif; font-size:14px; color:var(--ink); cursor:pointer;}
   .setting-row:last-child{border-bottom:none;}
   .setting-val{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--steel);}
+  .setting-row.static{cursor:default;}
+  .lang-seg .seg-btn{min-width:38px; text-align:center;}
   #clientLang{position:fixed; top:14px; inset-inline-end:14px; z-index:60; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.04em; background:var(--paper); border:1px solid var(--ink); border-radius:var(--r); color:var(--ink); padding:5px 10px; cursor:pointer;}
   #clientLang[hidden]{display:none;}
   /* ---- car page ---- */
@@ -315,6 +317,22 @@
   .pw-wrap input{width:100%; padding-inline-end:42px;}
   .pw-eye{position:absolute; inset-inline-end:5px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--graphite); padding:6px; display:flex; align-items:center;}
   .pw-eye:hover{color:var(--ink);}
+  /* ---- motion / transitions ---- */
+  @keyframes viewIn{from{opacity:0; transform:translateY(7px);} to{opacity:1; transform:none;}}
+  @keyframes fadeIn{from{opacity:0;} to{opacity:1;}}
+  @keyframes popIn{from{opacity:0; transform:translateY(10px) scale(.98);} to{opacity:1; transform:none;}}
+  .view-in{animation:viewIn .19s ease both;}
+  .modal-overlay{animation:fadeIn .15s ease both;}
+  .modal{animation:popIn .2s cubic-bezier(.2,.7,.3,1) both;}
+  .app-toast{animation:popIn .18s ease both;}
+  .row, .sched-row, .alert-row, .flag-row, .cal-svc, .setting-row{transition:background .12s ease;}
+  .row:active, .sched-row:active, .alert-row:active, .daybox.has:active, .mo-cell[onclick]:active{background:#F0ECE0;}
+  .btn{transition:transform .06s ease, opacity .12s ease;}
+  .btn:active{transform:translateY(1px);}
+  @media (prefers-reduced-motion: reduce){
+    .view-in, .modal-overlay, .modal, .app-toast{animation:none;}
+    .btn{transition:none;}
+  }
   .flags-list{margin-bottom:4px;}
   .flag-row{display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-top:1px solid var(--hairline);}
   .flag-row:first-child{border-top:none;}
@@ -642,10 +660,17 @@ function toggleLang(){
   applyLang();
   refresh();
 }
+function setLang(l){
+  if (l === LANG) return;
+  LANG = l;
+  try { localStorage.setItem('gb_lang', LANG); } catch(e){}
+  applyLang();
+  refresh();
+}
 function refresh(){ if (clientId) renderClientFlow(clientId); else renderMechanic(); }
 
 function baseUrl(){ return location.origin + location.pathname; }
-function go(html){ app.innerHTML = html; }
+function go(html){ app.innerHTML = html; app.classList.remove('view-in'); void app.offsetWidth; app.classList.add('view-in'); }
 function stickyFooter(buttonsHtml){
   return '<div class="sticky-footer"><div class="sticky-footer-inner">' + buttonsHtml + '</div></div>';
 }
@@ -936,7 +961,11 @@ function renderSettings(){
     '<h1 class="title">' + t('Settings') + '</h1>' +
     '<hr class="rule">' +
     '<div class="card settings-card" style="min-height:auto;">' +
-      '<button class="setting-row" onclick="toggleLang()"><span>' + t('Language') + '</span><span class="setting-val">' + (LANG === 'he' ? 'עברית' : 'English') + '</span></button>' +
+      '<div class="setting-row static"><span>' + t('Language') + '</span>' +
+        '<div class="seg lang-seg">' +
+          '<button class="seg-btn' + (LANG !== 'he' ? ' active' : '') + '" onclick="setLang(\'en\')">EN</button>' +
+          '<button class="seg-btn' + (LANG === 'he' ? ' active' : '') + '" onclick="setLang(\'he\')">עב</button>' +
+        '</div></div>' +
       '<button class="setting-row" onclick="renderProfile()"><span>' + t('Profile & details') + '</span><span class="setting-val">' + esc(SHOP_NAME) + ' ' + chevFwd() + '</span></button>' +
       '<button class="setting-row" onclick="renderArchived()"><span>' + t('Archived') + '</span><span class="setting-val">' + chevFwd() + '</span></button>' +
     '</div>' +
