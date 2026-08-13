@@ -610,7 +610,13 @@ var T_HE = {
   "You have no clients or cars yet":"אין לך עדיין לקוחות ורכבים","Add a client and schedule a service":"הוסף לקוח ותזמן טיפול","Add car":"הוסף רכב",
   "Day":"יום","Week":"שבוע","Month":"חודש","Add service":"הוסף טיפול",
   "Sign in":"התחברות","Sign in to manage your shop":"התחבר כדי לנהל את המוסך","Email":"אימייל","Password":"סיסמה",
-  "Log out":"התנתקות","Loading…":"טוען…","Could not save — check your connection":"השמירה נכשלה — בדוק את החיבור"
+  "Log out":"התנתקות","Loading…":"טוען…","Could not save — check your connection":"השמירה נכשלה — בדוק את החיבור",
+  "Forgot password?":"שכחת סיסמה?","No account yet?":"אין לך חשבון?","Create one":"צור חשבון","Create account":"יצירת חשבון",
+  "Set up your shop login":"הגדר את פרטי הכניסה של המוסך","At least 6 characters":"לפחות 6 תווים",
+  "Check your email to confirm your account, then sign in.":"בדוק את האימייל שלך לאישור החשבון, ואז התחבר.",
+  "Reset password":"איפוס סיסמה","We’ll email you a reset link.":"נשלח לך קישור לאיפוס במייל.","Send reset link":"שלח קישור לאיפוס",
+  "If that email has an account, a reset link is on its way.":"אם קיים חשבון עם האימייל הזה, קישור לאיפוס בדרך אליך.",
+  "Back to sign in":"חזרה להתחברות","Set a new password":"הגדרת סיסמה חדשה","New password":"סיסמה חדשה","Update password":"עדכן סיסמה","Password updated":"הסיסמה עודכנה"
 };
 function t(s){ return (LANG === 'he' && T_HE[s] != null) ? T_HE[s] : s; }
 function bchevron(){ return LANG === 'he' ? '›' : '‹'; }
@@ -1687,20 +1693,83 @@ function renderLogin(err){
     '<div style="text-align:center;padding-top:24px;">' + CAR_ILLUSTRATION + '</div>' +
     '<h1 class="title" style="text-align:center;">' + t('Sign in') + '</h1>' +
     '<p class="sub" style="text-align:center;text-transform:none;">' + t('Sign in to manage your shop') + '</p>' +
-    '<div class="field"><label>' + t('Email') + '</label><input id="lg-email" type="email" autocomplete="username"></div>' +
-    '<div class="field"><label>' + t('Password') + '</label><input id="lg-pass" type="password" autocomplete="current-password"></div>' +
+    '<div class="field"><label>' + t('Email') + '</label><input id="au-email" type="email" autocomplete="username"></div>' +
+    '<div class="field"><label>' + t('Password') + '</label><input id="au-pass" type="password" autocomplete="current-password"></div>' +
     (err ? '<p class="hint" style="color:var(--signal);">' + esc(err) + '</p>' : '') +
+    '<p class="center" style="margin:4px 0 0;font-size:13px;"><span class="link-ish" onclick="renderForgot()">' + t('Forgot password?') + '</span></p>' +
+    '<p class="center" style="margin:16px 0 0;font-size:13px;color:var(--graphite);">' + t('No account yet?') + ' <span class="link-ish" onclick="renderSignup()">' + t('Create one') + '</span></p>' +
     stickyFooter('<button class="btn btn-primary" onclick="doLogin()">' + t('Sign in') + '</button>')
   );
 }
 function doLogin(){
-  var email = document.getElementById('lg-email').value.trim();
-  var pass = document.getElementById('lg-pass').value;
+  var email = document.getElementById('au-email').value.trim();
+  var pass = document.getElementById('au-pass').value;
   renderLoading();
   DB.auth.signInWithPassword({ email: email, password: pass }).then(function(res){
     if (res.error) { renderLogin(res.error.message); return; }
     USER_ID = res.data.user.id;
     loadAll().then(function(){ syncHeader(); renderDashboard(); });
+  });
+}
+function renderSignup(err){
+  go(
+    '<span class="back" onclick="renderLogin()">' + bchevron() + ' ' + t('Sign in') + '</span>' +
+    '<h1 class="title">' + t('Create account') + '</h1>' +
+    '<p class="sub" style="text-transform:none;">' + t('Set up your shop login') + '</p>' +
+    '<div class="field"><label>' + t('Email') + '</label><input id="au-email" type="email" autocomplete="username"></div>' +
+    '<div class="field"><label>' + t('Password') + '</label><input id="au-pass" type="password" autocomplete="new-password" placeholder="' + t('At least 6 characters') + '"></div>' +
+    (err ? '<p class="hint" style="color:var(--signal);">' + esc(err) + '</p>' : '') +
+    stickyFooter('<button class="btn btn-primary" onclick="doSignup()">' + t('Create account') + '</button>')
+  );
+}
+function doSignup(){
+  var email = document.getElementById('au-email').value.trim();
+  var pass = document.getElementById('au-pass').value;
+  renderLoading();
+  DB.auth.signUp({ email: email, password: pass }).then(function(res){
+    if (res.error) { renderSignup(res.error.message); return; }
+    if (res.data.session) { USER_ID = res.data.user.id; loadAll().then(function(){ syncHeader(); renderDashboard(); }); }
+    else { renderAuthMessage(t('Check your email to confirm your account, then sign in.')); }
+  });
+}
+function renderForgot(){
+  go(
+    '<span class="back" onclick="renderLogin()">' + bchevron() + ' ' + t('Sign in') + '</span>' +
+    '<h1 class="title">' + t('Reset password') + '</h1>' +
+    '<p class="sub" style="text-transform:none;">' + t('We’ll email you a reset link.') + '</p>' +
+    '<div class="field"><label>' + t('Email') + '</label><input id="au-email" type="email" autocomplete="username"></div>' +
+    stickyFooter('<button class="btn btn-primary" onclick="doForgot()">' + t('Send reset link') + '</button>')
+  );
+}
+function doForgot(){
+  var email = document.getElementById('au-email').value.trim();
+  if (!email) return;
+  DB.auth.resetPasswordForEmail(email, { redirectTo: baseUrl() });
+  renderAuthMessage(t('If that email has an account, a reset link is on its way.'));
+}
+function renderAuthMessage(msg){
+  go(
+    '<div style="text-align:center;padding-top:30px;">' + CAR_ILLUSTRATION + '</div>' +
+    '<p class="sub" style="text-align:center;text-transform:none;">' + esc(msg) + '</p>' +
+    stickyFooter('<button class="btn btn-primary" onclick="renderLogin()">' + t('Back to sign in') + '</button>')
+  );
+}
+function renderSetNewPassword(err){
+  go(
+    '<h1 class="title" style="margin-top:24px;">' + t('Set a new password') + '</h1>' +
+    '<div class="field"><label>' + t('New password') + '</label><input id="au-newpass" type="password" autocomplete="new-password"></div>' +
+    (err ? '<p class="hint" style="color:var(--signal);">' + esc(err) + '</p>' : '') +
+    stickyFooter('<button class="btn btn-primary" onclick="doSetPassword()">' + t('Update password') + '</button>')
+  );
+}
+function doSetPassword(){
+  var pass = document.getElementById('au-newpass').value;
+  renderLoading();
+  DB.auth.updateUser({ password: pass }).then(function(res){
+    if (res.error) { renderSetNewPassword(res.error.message); return; }
+    if (location.hash) history.replaceState(null, '', baseUrl());
+    USER_ID = res.data.user.id;
+    loadAll().then(function(){ syncHeader(); renderDashboard(); showToast(t('Password updated')); });
   });
 }
 function doLogout(){
@@ -1721,6 +1790,7 @@ function boot(){
   applyLang();
   renderLoading();
   DB = supabase.createClient(SUPA_URL, SUPA_KEY);
+  DB.auth.onAuthStateChange(function(event){ if (event === 'PASSWORD_RECOVERY') renderSetNewPassword(); });
   if (clientId) {
     DB.rpc('get_client_public', { p_id: clientId }).then(function(res){
       STATE = res.data ? [migrateClient(res.data)] : [];
@@ -1729,6 +1799,7 @@ function boot(){
     });
     return;
   }
+  if (location.hash.indexOf('type=recovery') >= 0) { return; } /* handled by onAuthStateChange */
   DB.auth.getSession().then(function(sess){
     if (!sess.data.session) { syncHeader(); renderLogin(); return; }
     USER_ID = sess.data.session.user.id;
