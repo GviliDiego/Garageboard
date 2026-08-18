@@ -1,7 +1,8 @@
 {
-  "name": "GarageBoard",
-  "short_name": "GarageBoard",
-  "start_url": "./garageboard_app.html",
+  "name": "SabbaShop",
+  "short_name": "SabbaShop",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#FAFAF7",
   "theme_color": "#15150F",
